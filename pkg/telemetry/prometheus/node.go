@@ -127,6 +127,8 @@ func Init(nodeID string, nodeType livekit.NodeType) error {
 	rpc.InitPSRPCStats(prometheus.Labels{"node_id": nodeID, "node_type": nodeType.String()})
 	initQualityStats(nodeID, nodeType)
 
+	initLightTwistMetrics(nodeID, nodeType)
+
 	var err error
 	cpuStats, err = hwstats.NewCPUStats(nil)
 	if err != nil {

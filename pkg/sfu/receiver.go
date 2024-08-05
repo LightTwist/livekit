@@ -17,6 +17,7 @@ package sfu
 import (
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,7 @@ import (
 	"github.com/livekit/livekit-server/pkg/sfu/buffer"
 	"github.com/livekit/livekit-server/pkg/sfu/connectionquality"
 	dd "github.com/livekit/livekit-server/pkg/sfu/rtpextension/dependencydescriptor"
+	"github.com/livekit/livekit-server/pkg/telemetry/prometheus"
 )
 
 var (
@@ -354,6 +356,33 @@ func (w *WebRTCReceiver) AddUpTrack(track *webrtc.TrackRemote, buff *buffer.Buff
 	buff.OnRtcpFeedback(w.sendRTCP)
 	buff.OnRtcpSenderReport(func() {
 		srData := buff.GetSenderReportData()
+
+		clockRate := track.Codec().ClockRate
+
+		// fmt.Printf("----------------------------\n")
+		// fmt.Printf("incoming RTCPSenderReportData:\n")
+		// fmt.Printf("  ssrc:    %d\n", w.ssrc(0))
+		// fmt.Printf("  isSVC:    %t\n", w.isSVC)
+		// fmt.Printf("  layer:    %d\n", layer)
+		// fmt.Printf("----------------------------\n")
+
+		if clockRate == 90000 {
+			if layer == 2 {
+				prometheus.SetSenderReportDelta(strconv.FormatUint(uint64(w.ssrc(0)), 10), srData.NTPTimestamp.Time(), srData.RTPTimestamp, clockRate, "incoming")
+			}
+		} else {
+			prometheus.SetSenderReportDelta(strconv.FormatUint(uint64(w.ssrc(0)), 10), srData.NTPTimestamp.Time(), srData.RTPTimestamp, clockRate, "incoming")
+		}
+		// fmt.Printf("----------------------------\n")
+		// fmt.Printf("incoming RTCPSenderReportData:\n")
+		// fmt.Printf("  ssrc:    %d\n", w.ssrc(0))
+		// fmt.Printf("  RTPTimestamp:    %d\n", srData.RTPTimestamp)
+		// fmt.Printf("  RTPTimestampExt: %d\n", srData.RTPTimestampExt)
+		// fmt.Printf("  NTPTimestamp:    %d\n", srData.NTPTimestamp)
+		// fmt.Printf("  At:              %s\n", srData.At)
+		// fmt.Printf("  AtAdjusted:      %s\n", srData.AtAdjusted)
+		// fmt.Printf("----------------------------\n")
+
 		w.downTrackSpreader.Broadcast(func(dt TrackSender) {
 			_ = dt.HandleRTCPSenderReportData(w.codec.PayloadType, w.isSVC, layer, srData)
 		})

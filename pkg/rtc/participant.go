@@ -1691,10 +1691,24 @@ func (p *ParticipantImpl) subscriberRTCPWorker() {
 		var sd []rtcp.SourceDescriptionChunk
 		for _, subTrack := range subscribedTracks {
 			sr := subTrack.DownTrack().CreateSenderReport()
+
 			chunks := subTrack.DownTrack().CreateSourceDescriptionChunks()
 			if sr == nil || chunks == nil {
 				continue
 			}
+
+			srValue := *sr
+
+			clockRate := subTrack.DownTrack().Codec().ClockRate
+
+			prometheus.SetSenderReportDeltaRaw(strconv.FormatUint(uint64(srValue.SSRC), 10), srValue.NTPTime, srValue.RTPTime, clockRate, "outgoing")
+
+			// fmt.Printf("----------------------------\n")
+			// fmt.Printf("outgoing rtcp.SenderReport:\n")
+			// fmt.Printf("  SSRC:    %d\n", srValue.SSRC)
+			// fmt.Printf("  NTPTime: %d\n", srValue.NTPTime)
+			// fmt.Printf("  RTPTime:    %d\n", srValue.RTPTime)
+			// fmt.Printf("----------------------------\n")
 
 			pkts = append(pkts, sr)
 			sd = append(sd, chunks...)
